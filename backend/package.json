@@ -1,0 +1,10 @@
+{
+  "//": [
+    "FILE: backend/package.json",
+    "PHASE: 0 - Project Setup & Infrastructure",
+    "PURPOSE: Backend dependencies and scripts: dev (API), dev:worker, build, start, start:worker, prisma:*, test, lint."
+  ],
+  "name": "@reachinbox/backend",
+  "private": true,
+  "version": "0.0.0"
+}

@@ -1,0 +1,6 @@
+// FILE: backend/tsconfig.json
+// PHASE: 0 - Project Setup & Infrastructure
+// PURPOSE: Strict TypeScript config for Node (ES2022, NodeNext, strict, noUncheckedIndexedAccess).
+{
+  "compilerOptions": {}
+}

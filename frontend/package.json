@@ -1,0 +1,10 @@
+{
+  "//": [
+    "FILE: frontend/package.json",
+    "PHASE: 0 - Project Setup & Infrastructure",
+    "PURPOSE: Frontend deps: react, react-dom, react-router-dom, @tanstack/react-query, tailwindcss, sonner (toasts), papaparse, zod, lucide-react. Scripts: dev, build, lint, preview."
+  ],
+  "name": "@reachinbox/frontend",
+  "private": true,
+  "version": "0.0.0"
+}

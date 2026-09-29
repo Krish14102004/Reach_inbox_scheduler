@@ -1,0 +1,6 @@
+// FILE: frontend/tsconfig.json
+// PHASE: 0 - Project Setup & Infrastructure
+// PURPOSE: Strict TS config for Vite + React (jsx: react-jsx, path alias @/* -> src/*).
+{
+  "compilerOptions": {}
+}
