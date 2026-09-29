@@ -3,93 +3,93 @@
 // PURPOSE: MySQL schema: User, Sender, EmailBatch, ScheduledEmail, SlackConnection, and scheduler indexes.
 
 generator client {
-	provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 datasource db {
-	provider = "mysql"
+    provider = "mysql"
 }
 
 enum EmailStatus {
-	scheduled
-	processing
-	sent
-	failed
+    scheduled
+    processing
+    sent
+    failed
 }
 
 model User {
-	id              String           @id @default(cuid())
-	googleId        String           @unique @db.VarChar(191)
-	email           String           @unique @db.VarChar(320)
-	name            String
-	avatarUrl       String?          @db.Text
-	createdAt       DateTime         @default(now()) @db.DateTime(3)
-	senders         Sender[]
-	batches         EmailBatch[]
-	scheduledEmails ScheduledEmail[]
-	slackConnection SlackConnection?
+    id              String           @id @default(cuid())
+    googleId        String           @unique @db.VarChar(191)
+    email           String           @unique @db.VarChar(320)
+    name            String
+    avatarUrl       String?          @db.Text
+    createdAt       DateTime         @default(now()) @db.DateTime(3)
+    senders         Sender[]
+    batches         EmailBatch[]
+    scheduledEmails ScheduledEmail[]
+    slackConnection SlackConnection?
 }
 
 model Sender {
-	id              String           @id @default(cuid())
-	userId          String
-	email           String           @db.VarChar(320)
-	smtpHost        String
-	smtpPort        Int
-	smtpUser        String           @db.VarChar(320)
-	smtpPass        String           @db.Text
-	label           String?
-	user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-	scheduledEmails ScheduledEmail[]
+    id              String           @id @default(cuid())
+    userId          String
+    email           String           @db.VarChar(320)
+    smtpHost        String
+    smtpPort        Int
+    smtpUser        String           @db.VarChar(320)
+    smtpPass        String           @db.Text
+    label           String?
+    user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+    scheduledEmails ScheduledEmail[]
 
-	@@index([userId])
+    @@index([userId])
 }
 
 model EmailBatch {
-	id              String           @id @default(cuid())
-	userId          String
-	subject         String           @db.VarChar(998)
-	body            String           @db.Text
-	startTime       DateTime         @db.DateTime(3)
-	delayBetweenMs  Int
-	hourlyLimit     Int
-	createdAt       DateTime         @default(now()) @db.DateTime(3)
-	user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-	scheduledEmails ScheduledEmail[]
+    id              String           @id @default(cuid())
+    userId          String
+    subject         String           @db.VarChar(998)
+    body            String           @db.Text
+    startTime       DateTime         @db.DateTime(3)
+    delayBetweenMs  Int
+    hourlyLimit     Int
+    createdAt       DateTime         @default(now()) @db.DateTime(3)
+    user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+    scheduledEmails ScheduledEmail[]
 
-	@@index([userId, createdAt])
+    @@index([userId, createdAt])
 }
 
 model ScheduledEmail {
-	id             String      @id @default(cuid())
-	batchId        String
-	userId         String
-	senderId       String
-	toEmail        String      @db.VarChar(320)
-	subject        String      @db.VarChar(998)
-	body           String      @db.Text
-	status         EmailStatus @default(scheduled)
-	scheduledAt    DateTime    @db.DateTime(3)
-	sentAt         DateTime?   @db.DateTime(3)
-	attempts       Int         @default(0)
-	lastError      String?     @db.Text
-	messageId      String?
-	idempotencyKey String      @unique @db.VarChar(64)
-	batch          EmailBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
-	user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-	sender         Sender      @relation(fields: [senderId], references: [id], onDelete: Restrict)
+    id             String      @id @default(cuid())
+    batchId        String
+    userId         String
+    senderId       String
+    toEmail        String      @db.VarChar(320)
+    subject        String      @db.VarChar(998)
+    body           String      @db.Text
+    status         EmailStatus @default(scheduled)
+    scheduledAt    DateTime    @db.DateTime(3)
+    sentAt         DateTime?   @db.DateTime(3)
+    attempts       Int         @default(0)
+    lastError      String?     @db.Text
+    messageId      String?
+    idempotencyKey String      @unique @db.VarChar(64)
+    batch          EmailBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+    user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+    sender         Sender      @relation(fields: [senderId], references: [id], onDelete: Restrict)
 
-	@@index([status, scheduledAt])
-	@@index([userId, status, scheduledAt])
+    @@index([status, scheduledAt])
+    @@index([userId, status, scheduledAt])
 }
 
 model SlackConnection {
-	id          String   @id @default(cuid())
-	userId      String   @unique
-	teamId      String?
-	accessToken String?  @db.Text
-	webhookUrl  String?  @db.Text
-	channelId   String?
-	createdAt   DateTime @default(now()) @db.DateTime(3)
-	user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    id          String   @id @default(cuid())
+    userId      String   @unique
+    teamId      String?
+    accessToken String?  @db.Text
+    webhookUrl  String?  @db.Text
+    channelId   String?
+    createdAt   DateTime @default(now()) @db.DateTime(3)
+    user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

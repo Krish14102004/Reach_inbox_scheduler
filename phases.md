@@ -9,24 +9,27 @@
 
 ---
 
-## Phase 0 — Project Setup & Infrastructure  (13 files)
+## Phase 0 — Project Setup & Infrastructure (13 files)
+
 **Goal:** repo boots, infra runs, tooling enforced.
 **Tasks**
+
 1. Init git repo (private), npm workspaces (`backend`, `frontend`).
 2. `docker-compose.yml`: MySQL, Redis (AOF on), Elasticsearch single-node.
 3. Backend/Frontend `package.json`, `tsconfig.json`, ESLint (ban cron libs), `.env.example` files.
 4. Vite + Tailwind + React skeleton compiles.
 
 **Files**
+
 - `package.json` — Root npm workspaces config (backend + frontend). Shared scripts: dev, build, lint, test, docker:up, docker:down.
 - `.gitignore` — Ignore node_modules, dist, .env files, coverage, docker volumes, OS/editor files. Never commit secrets.
 - `docker-compose.yml` — Local infra: MySQL, Redis (with AOF persistence enabled), Elasticsearch (single node). Named volumes so data survives restarts.
-- `backend/package.json` — Backend dependencies and scripts: dev (API), dev:worker, build, start, start:worker, prisma:*, test, lint.
+- `backend/package.json` — Backend dependencies and scripts: dev (API), dev:worker, build, start, start:worker, prisma:\*, test, lint.
 - `backend/tsconfig.json` — Strict TypeScript config for Node (ES2022, NodeNext, strict, noUncheckedIndexedAccess).
 - `backend/eslint.config.js` — ESLint flat config: typescript-eslint, no-explicit-any, no-floating-promises. Ban cron libraries via no-restricted-imports.
 - `backend/.env.example` — Documented template of ALL backend env vars: DB, Redis, ES, JWT/cookie, Google OAuth, Slack OAuth, WORKER_CONCURRENCY, MIN_DELAY_BETWEEN_EMAILS_MS, MAX_EMAILS_PER_HOUR_PER_SENDER, etc.
 - `frontend/package.json` — Frontend deps: react, react-dom, react-router-dom, @tanstack/react-query, tailwindcss, sonner (toasts), papaparse, zod, lucide-react. Scripts: dev, build, lint, preview.
-- `frontend/tsconfig.json` — Strict TS config for Vite + React (jsx: react-jsx, path alias @/* -> src/*).
+- `frontend/tsconfig.json` — Strict TS config for Vite + React (jsx: react-jsx, path alias @/_ -> src/_).
 - `frontend/vite.config.ts` — Vite config: react plugin, tailwind plugin, @ alias, dev proxy /api -> backend to keep cookies same-site.
 - `frontend/eslint.config.js` — ESLint flat config for React + hooks rules + typescript-eslint.
 - `frontend/.env.example` — VITE_API_BASE_URL (and nothing secret — frontend env is public).
@@ -36,14 +39,17 @@
 
 ---
 
-## Phase 1 — Backend Foundation  (15 files)
+## Phase 1 — Backend Foundation (15 files)
+
 **Goal:** a well-structured, observable Express app with DB.
 **Tasks**
+
 1. Zod env loader; logger; Prisma schema + first migration; Redis factory.
 2. `app.ts`, `server.ts`, central router, error classes, `errorHandler`, `notFound`, `validate`, `asyncHandler`, request logging.
 3. `/health` reporting DB + Redis (+ ES later).
 
 **Files**
+
 - `backend/prisma/schema.prisma` — Database schema: User, Sender, EmailBatch, ScheduledEmail (status, scheduledAt, sentAt, idempotencyKey UNIQUE, senderId, attempts), SlackConnection. Indexes on (status, scheduledAt) and (userId, status).
 - `backend/src/server.ts` — API process entrypoint: boots Express, connects Prisma/Redis, runs startup reconciler, mounts Bull Board, handles graceful shutdown (SIGTERM/SIGINT).
 - `backend/src/app.ts` — Express app factory: helmet, cors (credentials), cookie-parser, JSON body limit, request logger, routes, notFound + central error handler.
@@ -64,13 +70,16 @@
 
 ---
 
-## Phase 2 — Authentication (Google OAuth)  (7 files)
+## Phase 2 — Authentication (Google OAuth) (7 files)
+
 **Goal:** real Google login with cookie session.
 **Tasks**
+
 1. Google Cloud OAuth client; auth URL with `state`; callback; ID-token verification; upsert user.
 2. JWT httpOnly cookie; `requireAuth`; `/me`; `/logout`.
 
 **Files**
+
 - `backend/src/middleware/requireAuth.ts` — Verifies session cookie (JWT), loads user, attaches req.user; 401 otherwise.
 - `backend/src/modules/auth/auth.routes.ts` — GET /api/auth/google (start), GET /api/auth/google/callback, GET /api/auth/me, POST /api/auth/logout.
 - `backend/src/modules/auth/auth.controller.ts` — HTTP layer for auth routes: redirects, sets/clears httpOnly cookie, returns current user.
@@ -83,9 +92,11 @@
 
 ---
 
-## Phase 3 — Core Scheduler (BullMQ + Ethereal)  (18 files)
+## Phase 3 — Core Scheduler (BullMQ + Ethereal) (18 files)
+
 **Goal:** schedule → persist → delayed job → send → mark sent; restart-safe and idempotent.
 **Tasks**
+
 1. Ethereal senders script + sender service.
 2. `schedule.calculator` (pure) + unit tests.
 3. `POST /api/emails/schedule` (transaction + `addBulk` with `jobId=emailId`).
@@ -93,6 +104,7 @@
 5. Reconciler at boot; list endpoints (`scheduled`, `sent`).
 
 **Files**
+
 - `backend/src/worker.ts` — Worker process entrypoint: starts BullMQ email worker (configurable concurrency), graceful close on shutdown. Separate from API so it can be scaled/restarted independently.
 - `backend/src/lib/mailer.ts` — Nodemailer transport factory per Ethereal sender (cached by senderId). Exposes sendMail() returning messageId + preview URL.
 - `backend/src/modules/senders/senders.repository.ts` — Prisma queries for Sender (Ethereal SMTP creds): listByUser, findById.
@@ -116,9 +128,11 @@
 
 ---
 
-## Phase 4 — Rate Limiting, Delay & Concurrency  (4 files)
+## Phase 4 — Rate Limiting, Delay & Concurrency (4 files)
+
 **Goal:** behave like a real provider under load.
 **Tasks**
+
 1. `time.ts` window helpers (+ tests).
 2. Redis Lua hourly limiter per sender; safe across workers.
 3. Send-gate (min delay) using `SET NX PX`; re-delay instead of blocking.
@@ -126,6 +140,7 @@
 5. `WORKER_CONCURRENCY`, `MIN_DELAY_BETWEEN_EMAILS_MS`, `MAX_EMAILS_PER_HOUR_PER_SENDER` wired from env; per-batch override capped.
 
 **Files**
+
 - `backend/src/lib/time.ts` — Time helpers: hour-window key (UTC floor to hour), next-window start, ms-until helpers. Pure functions, unit-tested.
 - `backend/src/rate-limit/rateLimiter.ts` — Redis-backed hourly limiter keyed by sender + hour window. Atomic Lua INCR-if-below. Returns {allowed, nextWindowStart}. Safe across many workers/instances.
 - `backend/src/rate-limit/sendGate.ts` — Per-sender minimum delay between sends (Redis SET NX PX). Returns ms to wait; processor re-delays the job instead of blocking the worker.
@@ -135,14 +150,17 @@
 
 ---
 
-## Phase 5 — Slack Integration  (5 files)
+## Phase 5 — Slack Integration (5 files)
+
 **Goal:** real OAuth connect + live message on rate-limit hit.
 **Tasks**
+
 1. Slack app (OAuth v2, `chat:write` / incoming-webhook); connect/callback/status/disconnect.
 2. `SlackConnection` storage per user.
 3. `notifier`: post real message; dedupe per sender per window; no-op when not connected; wired into rescheduler.
 
 **Files**
+
 - `backend/src/modules/slack/slack.routes.ts` — GET /api/slack/connect (start OAuth), GET /api/slack/callback, GET /api/slack/status, DELETE /api/slack/disconnect.
 - `backend/src/modules/slack/slack.controller.ts` — HTTP layer for Slack connect/callback/status/disconnect.
 - `backend/src/modules/slack/slack.service.ts` — Slack OAuth v2 code exchange, store token/webhook per user, revoke on disconnect.
@@ -153,14 +171,17 @@
 
 ---
 
-## Phase 6 — Search (Elasticsearch) & Queue Dashboard  (7 files)
+## Phase 6 — Search (Elasticsearch) & Queue Dashboard (7 files)
+
 **Goal:** searchable emails + live queue visibility.
 **Tasks**
+
 1. ES client, mapping, `ensureIndex` at boot; index on schedule, update on status change (best effort).
 2. `GET /api/search/emails`; reindex script.
 3. Mount Bull Board at `/admin/queues` behind auth.
 
 **Files**
+
 - `backend/src/queue/bullBoard.ts` — Mounts Bull Board (@bull-board/express) at /admin/queues behind requireAuth for live queue visibility.
 - `backend/src/lib/elasticsearch.ts` — Elasticsearch client singleton + health check.
 - `backend/src/search/mapping.ts` — Index name + mapping/settings for the `emails` index (email, subject, body, status, senderId, userId, scheduledAt, sentAt).
@@ -173,19 +194,22 @@
 
 ---
 
-## Phase 7 — Frontend Foundation  (27 files)
+## Phase 7 — Frontend Foundation (27 files)
+
 **Goal:** design system + app shell before features.
 **Prereq:** `design.md` tokens filled from Figma.
 **Tasks**
+
 1. Tailwind theme from tokens; fonts.
 2. API client, shared types, formatters, `cn`.
 3. Reusable UI: Button, Input, Textarea, DateTimeInput, FileDropzone, Modal, Table, Tabs, Badge, Avatar, Spinner, EmptyState, Toaster.
 4. Layout: Header, DashboardLayout; providers + routes skeleton.
 
 **Files**
+
 - `frontend/src/main.tsx` — React entry: mounts <App/> with StrictMode.
 - `frontend/src/App.tsx` — Composes providers (QueryClientProvider, AuthProvider, Toaster, Router).
-- `frontend/src/routes/AppRoutes.tsx` — Route table: /login (public), / (protected dashboard), * (not found).
+- `frontend/src/routes/AppRoutes.tsx` — Route table: /login (public), / (protected dashboard), \* (not found).
 - `frontend/src/styles/index.css` — Tailwind import + base styles + global resets.
 - `frontend/src/styles/theme.css` — Design tokens as CSS variables / Tailwind @theme (colors, fonts, radii, shadows) copied from Figma per design.md.
 - `frontend/src/api/client.ts` — Single fetch wrapper: base URL, credentials:'include', JSON handling, normalises backend error envelope into ApiError.
@@ -215,15 +239,18 @@
 
 ---
 
-## Phase 8 — Frontend Features  (22 files)
+## Phase 8 — Frontend Features (22 files)
+
 **Goal:** every screen in the Figma, wired to the backend.
 **Tasks**
+
 1. Auth: LoginPage, AuthProvider, ProtectedRoute, header user info + logout.
 2. Dashboard: tabs, Compose button, Slack connect, search bar.
 3. Compose: form + zod, CSV parse with detected-count, submit, toasts.
 4. Scheduled & Sent tables with loading/empty/error and polling.
 
 **Files**
+
 - `frontend/src/api/auth.api.ts` — getMe(), logout(), loginUrl() — typed.
 - `frontend/src/api/emails.api.ts` — scheduleEmails(), listScheduled(), listSent(), searchEmails() — typed request/response.
 - `frontend/src/api/slack.api.ts` — getSlackStatus(), connectUrl(), disconnectSlack() — typed.
@@ -251,9 +278,11 @@
 
 ---
 
-## Phase 9 — Hardening, Load Test, Docs & Submission  (9 files)
+## Phase 9 — Hardening, Load Test, Docs & Submission (9 files)
+
 **Goal:** prove it, document it, ship it.
 **Tasks**
+
 1. Unit + integration tests (idempotency, rate limit, restart persistence).
 2. `load-test.ts`: 1000+ emails at the same time; capture behaviour for README/demo.
 3. README (run steps, Ethereal + env setup, architecture, rate limiting, features mapped), assumptions/trade-offs.
@@ -261,6 +290,7 @@
 5. Private repo, grant `Mitrajit` and `Yadav036`, submit ClickUp form.
 
 **Files**
+
 - `README.md` — Final submission README: run backend/frontend, Ethereal + env setup, architecture (scheduling, restart persistence, rate limiting, concurrency), feature list, assumptions/trade-offs.
 - `docs/assumptions-and-tradeoffs.md` — Every assumption, shortcut and trade-off made (required by the assignment). Append to it during development.
 - `docs/demo-script.md` — Step-by-step script for the <=5 min demo video: schedule, dashboard, restart scenario, rate-limit + Slack message, load behaviour.

@@ -37,4 +37,5 @@
 -->
 
 ## Decisions
+
 - MySQL instead of PostgreSQL.

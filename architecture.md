@@ -30,7 +30,7 @@
                                                         │ concurrency=N         │──▶ Ethereal SMTP
                                                         │ rate limit + gate     │──▶ Slack API (on limit hit)
                                                         └──────────┬────────────┘──▶ Elasticsearch (index/update)
-                                                                   
+
 ```
 
 Two Node processes from one codebase:
@@ -40,36 +40,38 @@ Two Node processes from one codebase:
 
 ## 2. Tech stack
 
-| Layer | Choice | Why |
-|---|---|---|
-| Language | TypeScript (strict) | Required; types across the whole stack |
-| API | Express.js | Required |
-| Queue | BullMQ on Redis (AOF on) | Required; delayed jobs, persistence, limiter, Bull Board |
-| DB | MySQL 8 + Prisma | Relational source of truth; migrations; typed queries |
-| SMTP | Ethereal via Nodemailer | Required fake SMTP; per-sender accounts |
-| Search | Elasticsearch 8 | Required searchable emails |
-| Auth | Google OAuth 2.0 (`google-auth-library`) + JWT in httpOnly cookie | Real OAuth, no sessions store needed |
-| Slack | Slack OAuth v2 + `chat.postMessage` (or incoming webhook from OAuth) | Real, verifiable message |
-| Validation | Zod | One schema language for env, requests, forms |
-| Logging | Pino | Structured, fast |
-| Tests | Vitest | Unit + integration |
-| Frontend | React 18 + Vite + TypeScript | Fast DX; "React" chosen over Next (no SSR need) |
-| Styling | Tailwind CSS v4 + tokens from Figma | Required (or similar) |
-| Data fetching | TanStack Query | Loading/error/refetch states for free |
-| Routing | React Router | Simple protected routes |
-| Toasts | sonner | Minimal error/success messaging |
-| CSV | papaparse | Robust CSV parsing |
-| Infra | Docker Compose | MySQL, Redis, Elasticsearch |
+| Layer         | Choice                                                               | Why                                                      |
+| ------------- | -------------------------------------------------------------------- | -------------------------------------------------------- |
+| Language      | TypeScript (strict)                                                  | Required; types across the whole stack                   |
+| API           | Express.js                                                           | Required                                                 |
+| Queue         | BullMQ on Redis (AOF on)                                             | Required; delayed jobs, persistence, limiter, Bull Board |
+| DB            | MySQL 8 + Prisma                                                     | Relational source of truth; migrations; typed queries    |
+| SMTP          | Ethereal via Nodemailer                                              | Required fake SMTP; per-sender accounts                  |
+| Search        | Elasticsearch 8                                                      | Required searchable emails                               |
+| Auth          | Google OAuth 2.0 (`google-auth-library`) + JWT in httpOnly cookie    | Real OAuth, no sessions store needed                     |
+| Slack         | Slack OAuth v2 + `chat.postMessage` (or incoming webhook from OAuth) | Real, verifiable message                                 |
+| Validation    | Zod                                                                  | One schema language for env, requests, forms             |
+| Logging       | Pino                                                                 | Structured, fast                                         |
+| Tests         | Vitest                                                               | Unit + integration                                       |
+| Frontend      | React 18 + Vite + TypeScript                                         | Fast DX; "React" chosen over Next (no SSR need)          |
+| Styling       | Tailwind CSS v4 + tokens from Figma                                  | Required (or similar)                                    |
+| Data fetching | TanStack Query                                                       | Loading/error/refetch states for free                    |
+| Routing       | React Router                                                         | Simple protected routes                                  |
+| Toasts        | sonner                                                               | Minimal error/success messaging                          |
+| CSV           | papaparse                                                            | Robust CSV parsing                                       |
+| Infra         | Docker Compose                                                       | MySQL, Redis, Elasticsearch                              |
 
 ## 3. Core flows
 
 ### 3.1 Login (Google OAuth)
+
 1. SPA → `GET /api/auth/google` → server redirects to Google with signed `state`.
 2. Google → `GET /api/auth/google/callback?code&state` → verify state, exchange code, verify ID token.
 3. Upsert `User`, issue **JWT in httpOnly cookie**, redirect to `FRONTEND_URL/`.
 4. SPA calls `GET /api/auth/me` to render header (name, email, avatar). Logout clears cookie.
 
 ### 3.2 Schedule emails
+
 1. Compose form → `POST /api/emails/schedule` `{subject, body, leads[], startTime, delayBetweenMs, hourlyLimit}`.
 2. Zod-validate. `schedule.calculator` (pure) computes `scheduledAt_i = startTime + i × delay` and assigns senders round-robin.
 3. **One DB transaction**: create `EmailBatch` + N `ScheduledEmail` rows (`status=scheduled`, unique `idempotencyKey`). Generate each email ID app-side before insert, then use `createMany({ skipDuplicates: true })`; MySQL does not support Prisma's `createManyAndReturn`.
@@ -78,6 +80,7 @@ Two Node processes from one codebase:
 6. Return `202` with batch summary.
 
 ### 3.3 Send (worker)
+
 ```
 job(emailId)
  ├─ claim: UPDATE … SET status='processing' WHERE id=? AND status='scheduled'  → 0 rows? ⇒ already handled, exit OK
@@ -89,30 +92,34 @@ job(emailId)
 ```
 
 ### 3.4 Restart safety (no cron)
+
 - Jobs live in **Redis (AOF)**; truth lives in **MySQL**. Restarting API/worker loses nothing.
 - **Reconciler** (`queue/reconciler.ts`) runs **once at boot** (not periodic): finds `scheduled` rows with no BullMQ job → re-adds by same `jobId`; resets stale `processing` rows (crash mid-send) back to `scheduled`.
 - BullMQ **stalled-job** detection re-queues jobs whose worker died; the atomic claim + unique key prevent double sending.
 
 ### 3.5 Rate limit hit
+
 1. Limiter returns `{allowed:false, nextWindowStart}`.
 2. Processor calls `rescheduler`: `job.moveToDelayed(nextWindowStart + rankOffset)` and throws `DelayedError` (job is **not** failed, attempts not consumed). DB `scheduledAt` is updated so the UI shows the new time.
 3. `slack.notifier` posts once per `(sender, window)` (dedupe flag in Redis). Not connected → silent no-op.
 
 ### 3.6 Slack connect
+
 `GET /api/slack/connect` → Slack authorize → `/api/slack/callback` → store token/webhook in `SlackConnection(userId)`. `DELETE /api/slack/disconnect` removes it. Notifier looks up the connection at send-time, so connecting later needs **no redeploy**.
 
 ### 3.7 Search
+
 Indexer keeps ES in sync on schedule, on status change, and via `scripts/reindex-elasticsearch.ts`. `GET /api/search/emails?q=` queries ES filtered by `userId`.
 
 ## 4. Data model (MySQL)
 
-| Table | Key columns |
-|---|---|
-| `User` | id, googleId (unique), email, name, avatarUrl, createdAt |
-| `Sender` | id, userId, email, smtpHost, smtpPort, smtpUser, smtpPass (encrypted at rest if time allows), label |
-| `EmailBatch` | id, userId, subject, body, startTime, delayBetweenMs, hourlyLimit, createdAt |
-| `ScheduledEmail` | id, batchId, userId, senderId, toEmail, subject, body, **status** (`scheduled` \| `processing` \| `sent` \| `failed`), scheduledAt, sentAt, attempts, lastError, messageId, **idempotencyKey (UNIQUE)** = SHA-256 hex hash(batchId + toEmail + index) |
-| `SlackConnection` | id, userId (unique), teamId, accessToken/webhookUrl, channelId, createdAt |
+| Table             | Key columns                                                                                                                                                                                                                                           |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `User`            | id, googleId (unique), email, name, avatarUrl, createdAt                                                                                                                                                                                              |
+| `Sender`          | id, userId, email, smtpHost, smtpPort, smtpUser, smtpPass (encrypted at rest if time allows), label                                                                                                                                                   |
+| `EmailBatch`      | id, userId, subject, body, startTime, delayBetweenMs, hourlyLimit, createdAt                                                                                                                                                                          |
+| `ScheduledEmail`  | id, batchId, userId, senderId, toEmail, subject, body, **status** (`scheduled` \| `processing` \| `sent` \| `failed`), scheduledAt, sentAt, attempts, lastError, messageId, **idempotencyKey (UNIQUE)** = SHA-256 hex hash(batchId + toEmail + index) |
+| `SlackConnection` | id, userId (unique), teamId, accessToken/webhookUrl, channelId, createdAt                                                                                                                                                                             |
 
 Indexes: `(status, scheduledAt)`, `(userId, status, scheduledAt)`, unique `idempotencyKey` (`VARCHAR(64)`). Email addresses use `VARCHAR(320)`, subjects `VARCHAR(998)`, and body, SMTP password, and last error use `TEXT`. `scheduledAt` and `sentAt` use `DATETIME(3)`; timestamps are UTC because MySQL `DATETIME` has no timezone. Use MySQL's default case-insensitive collation for recipient dedupe; Prisma filters must not specify `mode: 'insensitive'`.
 
@@ -120,13 +127,13 @@ For local migrations, use the Docker `root` account in `DATABASE_URL`; otherwise
 
 ## 5. Redis key design
 
-| Key | Purpose | TTL |
-|---|---|---|
-| `bull:email-queue:*` | BullMQ internal | — |
-| `rl:{senderId}:{yyyyMMddHH}` | hourly counter (atomic Lua INCR-if-below) | window end + buffer |
-| `rl:rank:{senderId}:{yyyyMMddHH}` | ordering offset counter for overflow jobs | window end + buffer |
-| `gate:{senderId}` | min-delay lock (`SET NX PX`) | MIN_DELAY ms |
-| `slack:notified:{senderId}:{yyyyMMddHH}` | dedupe Slack alert per window | window end + buffer |
+| Key                                      | Purpose                                   | TTL                 |
+| ---------------------------------------- | ----------------------------------------- | ------------------- |
+| `bull:email-queue:*`                     | BullMQ internal                           | —                   |
+| `rl:{senderId}:{yyyyMMddHH}`             | hourly counter (atomic Lua INCR-if-below) | window end + buffer |
+| `rl:rank:{senderId}:{yyyyMMddHH}`        | ordering offset counter for overflow jobs | window end + buffer |
+| `gate:{senderId}`                        | min-delay lock (`SET NX PX`)              | MIN_DELAY ms        |
+| `slack:notified:{senderId}:{yyyyMMddHH}` | dedupe Slack alert per window             | window end + buffer |
 
 ## 6. Rate limiting, concurrency and load behaviour
 
@@ -138,20 +145,20 @@ For local migrations, use the Docker `root` account in `DATABASE_URL`; otherwise
 
 ## 7. API surface
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/health` | – | liveness (DB, Redis, ES) |
-| GET | `/api/auth/google` | – | start OAuth |
-| GET | `/api/auth/google/callback` | – | finish OAuth |
-| GET | `/api/auth/me` | ✔ | current user |
-| POST | `/api/auth/logout` | ✔ | clear cookie |
-| POST | `/api/emails/schedule` | ✔ | create batch + jobs |
-| GET | `/api/emails/scheduled` | ✔ | paginated scheduled list |
-| GET | `/api/emails/sent` | ✔ | paginated sent/failed list |
-| GET | `/api/senders` / POST | ✔ | list / create Ethereal sender |
-| GET | `/api/slack/connect` · `/callback` · `/status` · DELETE `/disconnect` | ✔ | Slack OAuth |
-| GET | `/api/search/emails` | ✔ | ES search |
-| GET | `/admin/queues` | ✔ | Bull Board |
+| Method | Path                                                                  | Auth | Description                   |
+| ------ | --------------------------------------------------------------------- | ---- | ----------------------------- |
+| GET    | `/health`                                                             | –    | liveness (DB, Redis, ES)      |
+| GET    | `/api/auth/google`                                                    | –    | start OAuth                   |
+| GET    | `/api/auth/google/callback`                                           | –    | finish OAuth                  |
+| GET    | `/api/auth/me`                                                        | ✔    | current user                  |
+| POST   | `/api/auth/logout`                                                    | ✔    | clear cookie                  |
+| POST   | `/api/emails/schedule`                                                | ✔    | create batch + jobs           |
+| GET    | `/api/emails/scheduled`                                               | ✔    | paginated scheduled list      |
+| GET    | `/api/emails/sent`                                                    | ✔    | paginated sent/failed list    |
+| GET    | `/api/senders` / POST                                                 | ✔    | list / create Ethereal sender |
+| GET    | `/api/slack/connect` · `/callback` · `/status` · DELETE `/disconnect` | ✔    | Slack OAuth                   |
+| GET    | `/api/search/emails`                                                  | ✔    | ES search                     |
+| GET    | `/admin/queues`                                                       | ✔    | Bull Board                    |
 
 Error envelope (all errors): `{ "error": { "code": "STRING", "message": "human text", "details": {...}? } }`.
 
@@ -173,7 +180,7 @@ Frontend: `VITE_API_BASE_URL`.
 
 ## 10. Key trade-offs (expand in `docs/assumptions-and-tradeoffs.md`)
 
-- **At-least-once send + idempotent guard** rather than true exactly-once (SMTP has no transactions). A crash *after* SMTP accept but *before* DB update can re-send once; mitigated by storing `messageId` early and the claim state machine. Documented honestly.
+- **At-least-once send + idempotent guard** rather than true exactly-once (SMTP has no transactions). A crash _after_ SMTP accept but _before_ DB update can re-send once; mitigated by storing `messageId` early and the claim state machine. Documented honestly.
 - **Reconciler at boot only** (not periodic) to respect the no-cron rule.
 - **JWT cookie** instead of server sessions: simpler, stateless, revocation is coarser.
 - **Vite SPA** instead of Next.js: no SSR need; dev proxy keeps cookies same-site.

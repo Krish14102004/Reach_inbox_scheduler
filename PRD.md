@@ -30,11 +30,11 @@ A user signs in with Google, uploads a list of leads, writes an email, and sched
 
 ## 4. Target users
 
-| Persona | Description | What they need |
-|---|---|---|
-| **Outreach operator** (primary) | Sales/growth person running cold email campaigns. | Upload leads, schedule a campaign, see what is queued/sent, be alerted when limits are hit. |
-| **Platform/dev operator** (secondary) | Engineer watching the system. | Live queue visibility (Bull Board), predictable behaviour on restart and under load. |
-| **Assignment reviewers** (evaluators) | ReachInbox engineers. | Correct persistence, idempotency, rate-limit design, clean code, honest README/trade-offs, a clear demo. |
+| Persona                               | Description                                       | What they need                                                                                           |
+| ------------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **Outreach operator** (primary)       | Sales/growth person running cold email campaigns. | Upload leads, schedule a campaign, see what is queued/sent, be alerted when limits are hit.              |
+| **Platform/dev operator** (secondary) | Engineer watching the system.                     | Live queue visibility (Bull Board), predictable behaviour on restart and under load.                     |
+| **Assignment reviewers** (evaluators) | ReachInbox engineers.                             | Correct persistence, idempotency, rate-limit design, clean code, honest README/trade-offs, a clear demo. |
 
 ## 5. User stories
 
@@ -53,38 +53,38 @@ Priority: **M** = must (assignment-mandated), **S** = should, **C** = could (bon
 
 ### 6.1 Backend
 
-| ID | Requirement | Pri |
-|---|---|---|
-| B-1 | Accept email scheduling requests via REST API. | M |
-| B-2 | Persist scheduled emails in MySQL. | M |
-| B-3 | Schedule with **BullMQ delayed jobs** on Redis. **No cron** of any kind. | M |
-| B-4 | Send via **Ethereal SMTP** from **multiple senders**. | M |
-| B-5 | **Persistence on restart:** future emails still send on time; no duplicates; no restart from scratch. | M |
-| B-6 | **Idempotency:** same email is never sent more than once (DB unique key + atomic claim + deterministic jobId). | M |
-| B-7 | **Configurable worker concurrency**, safe under parallel execution. | M |
-| B-8 | **Minimum delay between individual sends** (documented in README). | M |
-| B-9 | **Hourly rate limit** (global or per sender), configurable via env, Redis/DB backed, safe across workers/instances. | M |
-| B-10 | On limit hit: **delay to next hour window**, never drop/fail, preserve order as much as possible. | M |
-| B-11 | **Slack OAuth** connect flow per user; **real Slack message** on rate-limit hit; graceful when not connected; works after later connect. | M |
-| B-12 | **Elasticsearch** indexing so scheduled/sent emails are searchable. | M |
-| B-13 | **Live BullMQ dashboard** (Bull Board). | M |
-| B-14 | Defined behaviour for **1000+ emails** scheduled for the same time. | M |
-| B-15 | Google OAuth session handling (login, me, logout). | M |
-| B-16 | Load-test script demonstrating B-14. | S |
+| ID   | Requirement                                                                                                                              | Pri |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| B-1  | Accept email scheduling requests via REST API.                                                                                           | M   |
+| B-2  | Persist scheduled emails in MySQL.                                                                                                       | M   |
+| B-3  | Schedule with **BullMQ delayed jobs** on Redis. **No cron** of any kind.                                                                 | M   |
+| B-4  | Send via **Ethereal SMTP** from **multiple senders**.                                                                                    | M   |
+| B-5  | **Persistence on restart:** future emails still send on time; no duplicates; no restart from scratch.                                    | M   |
+| B-6  | **Idempotency:** same email is never sent more than once (DB unique key + atomic claim + deterministic jobId).                           | M   |
+| B-7  | **Configurable worker concurrency**, safe under parallel execution.                                                                      | M   |
+| B-8  | **Minimum delay between individual sends** (documented in README).                                                                       | M   |
+| B-9  | **Hourly rate limit** (global or per sender), configurable via env, Redis/DB backed, safe across workers/instances.                      | M   |
+| B-10 | On limit hit: **delay to next hour window**, never drop/fail, preserve order as much as possible.                                        | M   |
+| B-11 | **Slack OAuth** connect flow per user; **real Slack message** on rate-limit hit; graceful when not connected; works after later connect. | M   |
+| B-12 | **Elasticsearch** indexing so scheduled/sent emails are searchable.                                                                      | M   |
+| B-13 | **Live BullMQ dashboard** (Bull Board).                                                                                                  | M   |
+| B-14 | Defined behaviour for **1000+ emails** scheduled for the same time.                                                                      | M   |
+| B-15 | Google OAuth session handling (login, me, logout).                                                                                       | M   |
+| B-16 | Load-test script demonstrating B-14.                                                                                                     | S   |
 
 ### 6.2 Frontend (must match Figma as closely as possible)
 
-| ID | Requirement | Pri |
-|---|---|---|
-| F-1 | **Real Google OAuth** login → redirect to dashboard. | M |
-| F-2 | Header shows user **name, email, avatar** + **Logout**. | M |
-| F-3 | Dashboard with **Scheduled Emails** and **Sent Emails** tabs + **Compose New Email** button. | M |
-| F-4 | Compose: subject, body, **CSV/TXT upload with detected-email count**, start time, delay between emails, hourly limit, **Schedule** button. | M |
-| F-5 | Scheduled table: Email, Subject, Scheduled time, Status — with **loading** and **empty** states. | M |
-| F-6 | Sent table: Email, Subject, Sent time, Status (`sent`/`failed`) — with **loading** and **empty** states. | M |
-| F-7 | **Connect Slack** button + connected state. | M |
-| F-8 | Reusable UI components, DRY, typed API layer, toasts/error handling. | M |
-| F-9 | Email search bar (uses Elasticsearch endpoint). | S |
+| ID  | Requirement                                                                                                                                | Pri |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------ | --- |
+| F-1 | **Real Google OAuth** login → redirect to dashboard.                                                                                       | M   |
+| F-2 | Header shows user **name, email, avatar** + **Logout**.                                                                                    | M   |
+| F-3 | Dashboard with **Scheduled Emails** and **Sent Emails** tabs + **Compose New Email** button.                                               | M   |
+| F-4 | Compose: subject, body, **CSV/TXT upload with detected-email count**, start time, delay between emails, hourly limit, **Schedule** button. | M   |
+| F-5 | Scheduled table: Email, Subject, Scheduled time, Status — with **loading** and **empty** states.                                           | M   |
+| F-6 | Sent table: Email, Subject, Sent time, Status (`sent`/`failed`) — with **loading** and **empty** states.                                   | M   |
+| F-7 | **Connect Slack** button + connected state.                                                                                                | M   |
+| F-8 | Reusable UI components, DRY, typed API layer, toasts/error handling.                                                                       | M   |
+| F-9 | Email search bar (uses Elasticsearch endpoint).                                                                                            | S   |
 
 ## 7. Non-functional requirements
 
