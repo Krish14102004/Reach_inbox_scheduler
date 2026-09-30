@@ -4,4 +4,10 @@
  * PURPOSE: Thin wrapper configuring the toast library with design tokens.
  */
 
-export {};
+import { Toaster as SonnerToaster, type ToasterProps } from 'sonner';
+
+export function Toaster(props: ToasterProps): JSX.Element {
+	return <SonnerToaster position="top-right" richColors closeButton {...props} />;
+}
+
+export default Toaster;

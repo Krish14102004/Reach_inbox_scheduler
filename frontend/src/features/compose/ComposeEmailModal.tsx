@@ -4,4 +4,15 @@
  * PURPOSE: Compose modal/page per Figma; hosts ComposeForm.
  */
 
-export {};
+import ComposeEmail from './ComposeEmail.js';
+
+export function ComposeEmailModal({ open, onClose, onScheduled }: {
+	open: boolean;
+	onClose: () => void;
+	onScheduled: () => Promise<void>;
+}): JSX.Element | null {
+	if (!open) return null;
+	return <ComposeEmail onClose={onClose} onScheduled={onScheduled} />;
+}
+
+export default ComposeEmailModal;

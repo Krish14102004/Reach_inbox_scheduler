@@ -36,10 +36,12 @@
   KEEP IT SHORT AND CURRENT: delete stale items; history belongs in git commits.
 -->
 
+alright
+
 ## Current status
 
-- Phase: Phase 3 — Core Scheduler (incomplete); Phase 4 work is not yet verified end to end
-- Working on: backend queue claiming and restart reconciliation, then remaining Phase 3 and Phase 4 behavior
+- Phase: Local implementation is in place; Phase 9 verification/submission remains
+- Working on: handoff checklist below; last known API, Vite, and worker processes were running
 - Last updated: 2026-09-30
 
 ## Completed
@@ -54,14 +56,26 @@
 - [x] Sender repository/service/routes implemented and wired into the app
 - [x] Email repository and rate-limit primitives implemented
 - [x] Processor claims scheduled rows with a conditional DB update; duplicate-delivery regression passes
-- [x] Startup reconciler restores future-dated scheduled jobs with their remaining delay
+- [x] Startup reconciler restores future-dated scheduled jobs with their remaining delay and runs before API listen
+- [x] SMTP delivery uses stored per-sender Ethereal credentials; batch/email writes are transactional and enqueue is bulk/idempotent
+- [x] Hourly rate limit, per-sender send gate, ranked deferral, and worker Redis lifecycle are wired into email processing
 - [x] Prisma Client regenerated with workspace Prisma 6.19.3; API health reports DB and Redis `ok`
+- [x] Applied the initial MySQL migration after startup reconciliation exposed missing tables; migration status is up to date
+- [x] Cleaned duplicate backend watchers and restarted one API process after confirming recurring port contention
+- [x] Implemented screenshot-based login, mailbox, detail, search, Slack controls, and compose/schedule UI
+- [x] Implemented frontend shared UI primitives, layout/auth guards, typed hooks, CSV utilities, and feature wrappers
+- [x] Aligned frontend API traffic to the Vite proxy on port 4001 and Google OAuth callback to port 4001
+- [x] Implemented Slack OAuth/alerts, Elasticsearch indexing/reindex, authenticated Bull Board, and load-test CLI
+- [x] Completed fresh-run README, demo script, assumptions/trade-offs, and aligned example ports with Docker/local config
+- [x] Redacted cookie and authorization headers from request logs
 
 ## Next steps
 
-1. Complete and verify the remaining Phase 3 queue, Ethereal send, retry, and restart behavior
-2. Complete Phase 4 atomic hourly limiting, send gate, and ordered rescheduling
-3. Run phase-scoped tests before moving to later phases
+1. Recheck the latest `Trail#3.1` batch state; confirm every recipient reaches `sent` after its reserved UTC window.
+2. Implement `backend/tests/integration/restart-persistence.test.ts`; the file is still an empty scaffold despite the successful manual worker-restart check.
+3. Run `backend/scripts/load-test.ts` with 1,000+ jobs and record observed throughput, ordering, and no-drop behavior; run backend/frontend lint and fix actionable issues.
+4. Verify a real Slack rate-limit alert and the hourly cap with two worker processes; Slack credentials are configured, but neither live scenario is verified yet.
+5. Rotate `JWT_SECRET` because a session cookie appeared in pasted logs; then record the demo, grant private-repo reviewer access, and submit the ClickUp form.
 
 ## Decisions
 
@@ -71,12 +85,26 @@
 
 ## Blockers
 
-- None blocking at the moment; backend is running and verified with the relevant typecheck/test command
+- Google OAuth callback is authorized and browser login round-trip has succeeded
+- Slack OAuth credentials are configured locally; live Slack delivery and multi-worker limiting remain unverified
+- Rotate `JWT_SECRET` if not already done; do not paste secrets or full request logs into chat
 
 ## Verification notes
 
 - Verified: `npm run --workspace @reachinbox/backend typecheck` succeeded after Prisma Client regeneration
-- Verified: `npm run --workspace @reachinbox/backend test -- --run tests/unit/time.test.ts` passed with 3/3 tests passing
-- Verified: focused processor and reconciler tests passed (2/2)
-- Verified: `GET /health` returned status, DB, and Redis as `ok`
+- Verified: backend typecheck passed after the processor and startup changes
+- Verified: all 8 backend unit test files passed (16/16 tests)
+- Verified: live Ethereal message sent and moved to Sent; worker restart test also sent successfully
+- Verified: hourly-limit batch stored limit=1 and sent across subsequent UTC windows; recheck the last recipient before closing this item
+- Verified: frontend production build passed after removing an extra CSS closing brace
+- Verified: latest backend typecheck, backend unit suite (16/16), and frontend production build all passed after shared UI implementation
+- Verified: frontend OAuth proxy returned 302 to Google with callback URI on port 4001
+- Verified: Google sign-in returned to the dashboard successfully
+- Verified: backend `/health` reports API, DB, and Redis as `ok`; frontend returns HTTP 200 on port 5173
+- Verified: BullMQ worker logged `Email worker started`
+- Verified: `prisma migrate deploy` applied `20260930000000_init`; `prisma migrate status` reports schema up to date
+- Verified: server logged startup on port 4001; `GET /health` returned status, DB, and Redis as `ok`
+- Verified: request log serializer now redacts cookie and authorization headers
 - Note: VS Code still reports a Prisma 7 schema diagnostic although workspace Prisma CLI/client are 6.19.3; CLI schema loading and backend startup succeed. This is an editor version mismatch, not a runtime failure.
+- Note: the most recent backend startup failure was caused by the pending initial migration (missing `ScheduledEmail`), while separate `EADDRINUSE` failures came from concurrent dev-server launches. Keep only one backend watcher running.
+- Handoff: current tracked implementation has backend typecheck, 16 unit tests, and frontend production build passing. `backend/tests/integration/restart-persistence.test.ts` is still empty; load-test CLI exists but has not been executed. External Slack and multi-worker behavior are explicitly unverified.

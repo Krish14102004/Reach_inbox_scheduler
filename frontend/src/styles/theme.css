@@ -1,17 +1,25 @@
-/*
- * FILE: frontend/src/styles/theme.css
- * PHASE: 7 - Frontend Foundation
- * PURPOSE: Design tokens as CSS variables / Tailwind @theme (colors, fonts, radii, shadows) copied from Figma per design.md.
- */
-
+/* Screenshot-derived light mail-client tokens; exact source Figma values were unavailable. */
 :root {
-  --color-bg: #020817;
-  --color-surface: #0f172a;
-  --color-surface-strong: #111827;
-  --color-text: #e2e8f0;
-  --color-text-muted: #94a3b8;
-  --color-accent: #38bdf8;
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --shadow-soft: 0 12px 30px rgba(15, 23, 42, 0.25);
+  color-scheme: light;
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f5f7f6;
+  --color-border: #e7ebe9;
+  --color-text: #202a31;
+  --color-text-muted: #89939b;
+  --color-primary: #00a94f;
+  --color-primary-hover: #008f43;
+  --color-primary-contrast: #ffffff;
+  --color-primary-soft: #e5f5ec;
+  --color-success: #078c50;
+  --color-success-bg: #e4f5ec;
+  --color-warning: #bb6b15;
+  --color-warning-bg: #fff0dc;
+  --color-danger: #bd3840;
+  --color-danger-bg: #ffebec;
+  --color-focus-ring: #70c99a;
+  --font-sans: 'DM Sans', 'Segoe UI', sans-serif;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --shadow-popover: 0 12px 32px rgb(25 43 34 / 14%);
 }

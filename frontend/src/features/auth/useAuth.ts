@@ -4,4 +4,4 @@
  * PURPOSE: Hook exposing user, isLoading, logout().
  */
 
-export {};
+export { useAuth } from './AuthProvider.js';
