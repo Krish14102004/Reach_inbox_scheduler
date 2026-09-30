@@ -10,7 +10,6 @@ import { logger } from './lib/logger.js';
 import { disconnectPrisma, prisma } from './lib/prisma.js';
 import { closeRedisClient, redisClient } from './lib/redis.js';
 import { runStartupReconciler } from './queue/reconciler.js';
-import { mountBullBoard } from './queue/bullBoard.js';
 import { ensureIndex } from './search/indexer.js';
 
 const app = createApp();
@@ -55,7 +54,6 @@ async function startServer(): Promise<void> {
     await redisClient.connect();
     await runStartupReconciler();
     await ensureIndex();
-    await mountBullBoard(app);
 
     server = app.listen(env.PORT);
     server.once('listening', () => {

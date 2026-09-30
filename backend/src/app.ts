@@ -12,13 +12,16 @@ import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
 import { requestLogger } from './middleware/requestLogger.js';
+import { getBullBoardRouter } from './queue/bullBoard.js';
 import routes from './routes.js';
 
 export function createApp(): Express {
   const app = express();
 
   app.disable('x-powered-by');
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: false,
+  }));
   app.use(
     cors({
       origin: env.FRONTEND_URL,
@@ -28,6 +31,7 @@ export function createApp(): Express {
   app.use(cookieParser());
   app.use(express.json({ limit: '1mb' }));
   app.use(requestLogger);
+  app.use(getBullBoardRouter());
   app.use(routes);
   app.use(notFound);
   app.use(errorHandler);

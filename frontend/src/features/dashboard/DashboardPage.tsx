@@ -3,13 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Check, ChevronDown, Clock3, Filter, Inbox, LogOut, Mail, Plus,
-  RefreshCw, Search, Send, Sparkles,
+  RefreshCw, Search, Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { listEmails, searchEmails } from '../../api/emails.api.js';
 import { disconnectSlack, getSlackStatus, slackConnectUrl } from '../../api/slack.api.js';
 import { useAuth } from '../auth/AuthProvider.js';
-import type { EmailStatus, ScheduledEmail } from '../../types/email.types.js';
+import type { EmailStatus } from '../../types/email.types.js';
 import ComposeEmail from '../compose/ComposeEmail.js';
 
 type Mailbox = 'scheduled' | 'sent';

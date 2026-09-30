@@ -1,23 +1,17 @@
-/**
- * FILE: backend/src/queue/bullBoard.ts
- * PHASE: 6 - Search (Elasticsearch) & Queue Dashboard
- * PURPOSE: Mounts Bull Board (@bull-board/express) at /admin/queues behind requireAuth for live queue visibility.
- */
-
-import type { Express } from 'express';
+import { Router } from 'express';
+import { createBullBoard } from '@bull-board/api';
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
+import { ExpressAdapter } from '@bull-board/express';
 import { env } from '../config/env.js';
 import { logger } from '../lib/logger.js';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { emailQueue } from './email.queue.js';
 
-export async function mountBullBoard(app: Express): Promise<void> {
-  if (!env.BULL_BOARD_ENABLED) return;
+export function getBullBoardRouter(): Router {
+  const router = Router();
+  if (!env.BULL_BOARD_ENABLED) return router;
 
   try {
-    const { createBullBoard } = await import('@bull-board/api');
-    const { BullMQAdapter } = await import('@bull-board/api/bullMQAdapter');
-    const { ExpressAdapter } = await import('@bull-board/express');
-
     const serverAdapter = new ExpressAdapter();
     serverAdapter.setBasePath('/admin/queues');
 
@@ -26,8 +20,14 @@ export async function mountBullBoard(app: Express): Promise<void> {
       serverAdapter,
     });
 
-    app.use('/admin/queues', requireAuth, serverAdapter.getRouter());
+    router.use('/admin/queues', requireAuth, serverAdapter.getRouter());
   } catch (error) {
     logger.warn({ err: error }, 'Bull Board could not be mounted');
   }
+
+  return router;
+}
+
+export async function mountBullBoard(): Promise<void> {
+  // Kept for backward compatibility
 }

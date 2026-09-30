@@ -74,11 +74,12 @@ Open `http://localhost:5173`. Use one API process and one worker; starting dupli
 - Rebuild the search index: `cmd /c npm run search:reindex --workspace @reachinbox/backend`
 - Create additional Ethereal senders: `cmd /c npm run senders:create --workspace @reachinbox/backend -- <userId> [count]`
 - Queue a load test (up to 5,000 recipients): `cmd /c npm run load:test --workspace @reachinbox/backend -- <userId> [count] [hourlyLimit]`
-- Backend typecheck/tests: `cmd /c npm run --workspace @reachinbox/backend typecheck` and `cmd /c npm run --workspace @reachinbox/backend test -- --run tests/unit`
+- Backend typecheck/tests: `cmd /c npm run --workspace @reachinbox/backend typecheck` and `cmd /c npm run --workspace @reachinbox/backend test`
+- Backend and frontend lint: `cmd /c npm run --workspace @reachinbox/backend lint` and `cmd /c npm run --workspace @reachinbox/frontend lint`
 - Frontend production build: `cmd /c npm run --workspace @reachinbox/frontend build`
 
 `docker compose down` preserves named database/queue/index volumes. `docker compose down -v` deletes them; use it only when intentionally resetting all local data.
 
 ## Current Verification
 
-Verified locally: Google login, API health, one Ethereal send, and a worker restart followed by a successful send. The hourly-limit UI test is sensitive to previous sends by the same sender in the current UTC hour; use a clean sender/window for a predictable demonstration. Live Slack notification delivery and simultaneous multi-worker load behavior still need a dedicated run.
+Verified locally: Google login, API health, one Ethereal send, a worker restart followed by a successful send, full test suite (18/18 passing unit and restart-persistence integration tests), backend/frontend lints (0 errors), and frontend production build. The hourly-limit UI test is sensitive to previous sends by the same sender in the current UTC hour; use a clean sender/window for a predictable demonstration. Live Slack notification delivery and simultaneous multi-worker load behavior remain documented as unverified without active external credentials/load run.
