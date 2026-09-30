@@ -4,4 +4,13 @@
  * PURPOSE: GET /api/search/emails?q=&status=&page= (auth required).
  */
 
-export {};
+import { Router } from 'express';
+import { asyncHandler } from '../../lib/asyncHandler.js';
+import { requireAuth } from '../../middleware/requireAuth.js';
+import { searchEmailsController } from './search.controller.js';
+
+const router = Router();
+
+router.get('/emails', requireAuth, asyncHandler(searchEmailsController));
+
+export default router;

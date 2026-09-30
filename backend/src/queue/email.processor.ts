@@ -30,13 +30,17 @@ export async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
     return;
   }
 
-  await prisma.scheduledEmail.update({
-    where: { id },
+  const claim = await prisma.scheduledEmail.updateMany({
+    where: { id, status: EMAIL_STATUS.scheduled },
     data: {
       status: EMAIL_STATUS.processing,
       attempts: { increment: 1 },
     },
   });
+
+  if (claim.count === 0) {
+    return;
+  }
 
   const result = await transport.sendMail({
     from: 'ReachInbox Local <noreply@reachinbox.local>',

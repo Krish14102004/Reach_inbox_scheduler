@@ -11,6 +11,7 @@ import { checkPrismaHealth, prisma } from './lib/prisma.js';
 import { checkRedisHealth, redisClient } from './lib/redis.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import emailsRoutes from './modules/emails/emails.routes.js';
+import searchRoutes from './modules/search/search.routes.js';
 import sendersRoutes from './modules/senders/senders.routes.js';
 import { validate } from './middleware/validate.js';
 
@@ -19,6 +20,7 @@ const router = Router();
 router.use('/api/auth', authRoutes);
 router.use('/api/emails', emailsRoutes);
 router.use('/api/senders', sendersRoutes);
+router.use('/api/search', searchRoutes);
 
 router.get(
   '/health',
