@@ -7,8 +7,10 @@
 import { randomUUID } from 'node:crypto';
 import { prisma } from '../../lib/prisma.js';
 import { BadRequestError } from '../../lib/errors.js';
+import { ensureUserHasSender, listUserSenders } from '../senders/senders.service.js';
 import { scheduleEmails } from './schedule.calculator.js';
 import { addEmailJobs } from '../../queue/email.queue.js';
+import { bulkIndex } from '../../search/indexer.js';
 
 export interface ScheduleEmailBatchInput {
   subject: string;
@@ -24,61 +26,47 @@ export async function scheduleEmailsForUser(userId: string, payload: ScheduleEma
     throw new BadRequestError('At least one recipient is required.');
   }
 
-  const sender = await prisma.sender.create({
-    data: {
-      userId,
-      email: 'noreply@reachinbox.local',
-      smtpHost: 'localhost',
-      smtpPort: 2525,
-      smtpUser: 'local-user',
-      smtpPass: 'local-pass',
-      label: 'Local queue sender',
-    },
-  });
-
-  const batch = await prisma.emailBatch.create({
-    data: {
-      userId,
-      subject: payload.subject,
-      body: payload.body,
-      startTime: new Date(payload.startTime),
-      delayBetweenMs: payload.delayBetweenMs,
-      hourlyLimit: payload.hourlyLimit,
-    },
-  });
+  const existingSenders = await listUserSenders(userId);
+  const senders = existingSenders.length > 0 ? existingSenders : [await ensureUserHasSender(userId)];
 
   const planned = scheduleEmails({
     leads: payload.leads,
     startTime: new Date(payload.startTime),
     delayBetweenMs: payload.delayBetweenMs,
-    senderCount: 1,
+    senderCount: senders.length,
   });
 
-  const createdRecords = [] as Array<{ id: string; toEmail: string; scheduledAt: Date; senderId: string; status: string }>; 
-
-  for (const item of planned) {
-    const created = await prisma.scheduledEmail.create({
+  const { batchId, createdRecords } = await prisma.$transaction(async (transaction) => {
+    const batch = await transaction.emailBatch.create({
       data: {
-        id: randomUUID(),
-        batchId: batch.id,
         userId,
-        senderId: sender.id,
-        toEmail: item.email,
         subject: payload.subject,
         body: payload.body,
-        scheduledAt: item.scheduledAt,
-        idempotencyKey: randomUUID().replace(/-/g, '').slice(0, 64),
+        startTime: new Date(payload.startTime),
+        delayBetweenMs: payload.delayBetweenMs,
+        hourlyLimit: payload.hourlyLimit,
       },
     });
 
-    createdRecords.push({
-      id: created.id,
-      toEmail: created.toEmail,
-      scheduledAt: created.scheduledAt,
-      senderId: created.senderId,
-      status: created.status,
-    });
-  }
+    const records = planned.map((item) => ({
+      id: randomUUID(),
+      batchId: batch.id,
+      userId,
+      senderId: senders[item.senderIndex]!.id,
+      toEmail: item.email,
+      subject: payload.subject,
+      body: payload.body,
+      scheduledAt: item.scheduledAt,
+      idempotencyKey: randomUUID().replace(/-/g, '').slice(0, 64),
+    }));
+
+    await transaction.scheduledEmail.createMany({ data: records });
+
+    return {
+      batchId: batch.id,
+      createdRecords: records.map((record) => ({ ...record, status: 'scheduled' })),
+    };
+  });
 
   await addEmailJobs(
     createdRecords.map((record) => ({
@@ -91,13 +79,26 @@ export async function scheduleEmailsForUser(userId: string, payload: ScheduleEma
         body: payload.body,
         senderId: record.senderId,
         scheduledAt: record.scheduledAt.toISOString(),
+        hourlyLimit: payload.hourlyLimit,
       },
       delay: Math.max(0, record.scheduledAt.getTime() - Date.now()),
     })),
   );
 
+  await bulkIndex(createdRecords.map((record) => ({
+    id: record.id,
+    userId,
+    senderId: record.senderId,
+    toEmail: record.toEmail,
+    subject: payload.subject,
+    body: payload.body,
+    status: record.status,
+    scheduledAt: record.scheduledAt.toISOString(),
+    sentAt: null,
+  })));
+
   return {
-    batchId: batch.id,
+    batchId,
     total: createdRecords.length,
     items: createdRecords,
   };

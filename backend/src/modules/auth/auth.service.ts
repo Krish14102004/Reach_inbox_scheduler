@@ -9,8 +9,8 @@ import { usersRepository } from '../users/users.repository.js';
 import { buildGoogleAuthUrl, verifyGoogleCode } from './google.client.js';
 import { signSession, type SessionUser } from './session.js';
 
-export async function getGoogleLoginUrl(state?: string): Promise<string> {
-  return buildGoogleAuthUrl(state ?? undefined);
+export async function getGoogleLoginUrl(state: string): Promise<string> {
+  return buildGoogleAuthUrl(state);
 }
 
 export async function completeGoogleLogin(code: string): Promise<{ user: SessionUser & { id: string }; token: string }> {

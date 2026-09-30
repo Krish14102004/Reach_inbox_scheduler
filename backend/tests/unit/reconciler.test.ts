@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const { prismaMock, addEmailJobsMock } = vi.hoisted(() => ({
-  prismaMock: { scheduledEmail: { findMany: vi.fn() } },
+  prismaMock: { scheduledEmail: { findMany: vi.fn(), updateMany: vi.fn() } },
   addEmailJobsMock: vi.fn(),
 }));
 
 vi.mock('../../src/lib/prisma.js', () => ({ prisma: prismaMock }));
+vi.mock('../../src/config/env.js', () => ({ env: { PROCESSING_STALE_AFTER_MS: 300_000 } }));
 vi.mock('../../src/lib/logger.js', () => ({ logger: { info: vi.fn() } }));
 vi.mock('../../src/queue/email.queue.js', () => ({ addEmailJobs: addEmailJobsMock }));
 
@@ -31,8 +32,10 @@ describe('runStartupReconciler', () => {
         subject: 'Hello',
         body: 'Test message',
         scheduledAt: new Date(now.getTime() + 60_000),
+        batch: { hourlyLimit: 10 },
       },
     ]);
+    prismaMock.scheduledEmail.updateMany.mockResolvedValue({ count: 0 });
 
     const count = await runStartupReconciler();
 

@@ -19,6 +19,9 @@
     "start:worker": "node --env-file-if-exists=.env dist/worker.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
+    "senders:create": "node --env-file-if-exists=.env --import=tsx scripts/create-ethereal-senders.ts",
+    "search:reindex": "node --env-file-if-exists=.env --import=tsx scripts/reindex-elasticsearch.ts",
+    "load:test": "node --env-file-if-exists=.env --import=tsx scripts/load-test.ts",
     "test": "vitest run",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json"

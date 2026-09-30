@@ -13,6 +13,7 @@ import authRoutes from './modules/auth/auth.routes.js';
 import emailsRoutes from './modules/emails/emails.routes.js';
 import searchRoutes from './modules/search/search.routes.js';
 import sendersRoutes from './modules/senders/senders.routes.js';
+import slackRoutes from './modules/slack/slack.routes.js';
 import { validate } from './middleware/validate.js';
 
 const router = Router();
@@ -20,6 +21,7 @@ const router = Router();
 router.use('/api/auth', authRoutes);
 router.use('/api/emails', emailsRoutes);
 router.use('/api/senders', sendersRoutes);
+router.use('/api/slack', slackRoutes);
 router.use('/api/search', searchRoutes);
 
 router.get(

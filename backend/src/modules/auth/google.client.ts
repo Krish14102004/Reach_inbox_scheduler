@@ -5,7 +5,6 @@
  */
 
 import { OAuth2Client } from 'google-auth-library';
-import { randomUUID } from 'node:crypto';
 import { env } from '../../config/env.js';
 import { BadRequestError } from '../../lib/errors.js';
 
@@ -15,7 +14,7 @@ export const googleOAuthClient = new OAuth2Client(
   env.GOOGLE_REDIRECT_URI ?? '',
 );
 
-export function buildGoogleAuthUrl(state?: string): string {
+export function buildGoogleAuthUrl(state: string): string {
   if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_REDIRECT_URI) {
     throw new BadRequestError('Google OAuth is not configured yet.');
   }
@@ -24,7 +23,7 @@ export function buildGoogleAuthUrl(state?: string): string {
     access_type: 'offline',
     prompt: 'consent',
     scope: ['openid', 'email', 'profile'],
-    state: state ?? randomUUID(),
+    state,
   });
 }
 

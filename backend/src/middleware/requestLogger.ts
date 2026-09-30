@@ -12,4 +12,8 @@ export const requestLogger = pinoHttp({
   logger,
   autoLogging: true,
   genReqId: (req: IncomingMessage) => req.headers['x-request-id']?.toString() ?? crypto.randomUUID(),
+  redact: {
+    paths: ['req.headers.cookie', 'req.headers.authorization'],
+    censor: '[Redacted]',
+  },
 });

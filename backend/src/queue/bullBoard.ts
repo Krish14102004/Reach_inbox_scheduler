@@ -5,23 +5,29 @@
  */
 
 import type { Express } from 'express';
+import { env } from '../config/env.js';
+import { logger } from '../lib/logger.js';
+import { requireAuth } from '../middleware/requireAuth.js';
 import { emailQueue } from './email.queue.js';
 
 export async function mountBullBoard(app: Express): Promise<void> {
+  if (!env.BULL_BOARD_ENABLED) return;
+
   try {
     const { createBullBoard } = await import('@bull-board/api');
+    const { BullMQAdapter } = await import('@bull-board/api/bullMQAdapter');
     const { ExpressAdapter } = await import('@bull-board/express');
 
     const serverAdapter = new ExpressAdapter();
     serverAdapter.setBasePath('/admin/queues');
 
     createBullBoard({
-      queues: [emailQueue as any],
+      queues: [new BullMQAdapter(emailQueue)],
       serverAdapter,
     });
 
-    app.use('/admin/queues', serverAdapter.getRouter());
-  } catch {
-    // Bull Board is optional in local development; it can be installed later if needed.
+    app.use('/admin/queues', requireAuth, serverAdapter.getRouter());
+  } catch (error) {
+    logger.warn({ err: error }, 'Bull Board could not be mounted');
   }
 }

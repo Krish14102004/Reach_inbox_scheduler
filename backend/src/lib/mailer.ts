@@ -5,28 +5,56 @@
  */
 
 import nodemailer from 'nodemailer';
+import { env } from '../config/env.js';
 
-const transport = nodemailer.createTransport({
-  streamTransport: true,
-  newline: 'unix',
-  buffer: true,
-});
+export interface MailSender {
+  id: string;
+  email: string;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPass: string;
+}
 
-export async function sendMail(message: {
+const transports = new Map<string, ReturnType<typeof nodemailer.createTransport>>();
+
+function getTransport(sender: MailSender) {
+  let transport = transports.get(sender.id);
+
+  if (!transport) {
+    transport = nodemailer.createTransport({
+      host: sender.smtpHost,
+      port: sender.smtpPort,
+      secure: sender.smtpPort === 465,
+      auth: {
+        user: sender.smtpUser,
+        pass: sender.smtpPass,
+      },
+      tls: {
+        rejectUnauthorized: env.NODE_ENV !== 'development' || !env.ETHEREAL_ALLOW_SELF_SIGNED_CERTS,
+      },
+    });
+    transports.set(sender.id, transport);
+  }
+
+  return transport;
+}
+
+export async function sendMail(sender: MailSender, message: {
   to: string;
   subject: string;
   text: string;
   from?: string;
 }) {
-  const info = await transport.sendMail({
-    from: message.from ?? 'ReachInbox Local <noreply@reachinbox.local>',
+  const info = await getTransport(sender).sendMail({
+    from: message.from ?? sender.email,
     to: message.to,
     subject: message.subject,
     text: message.text,
   });
 
   return {
-    messageId: info.messageId ?? 'local-test-message',
-    previewUrl: `https://ethereal.local/preview/${encodeURIComponent(info.messageId ?? 'local-test-message')}`,
+    messageId: info.messageId ?? null,
+    previewUrl: nodemailer.getTestMessageUrl(info) || null,
   };
 }
