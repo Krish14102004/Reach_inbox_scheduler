@@ -4,4 +4,14 @@
  * PURPOSE: Shared TS types/DTOs for emails (ScheduledEmailDTO, SentEmailDTO, EmailStatus).
  */
 
-export {};
+export type EmailStatus = 'scheduled' | 'processing' | 'sent' | 'failed';
+
+export interface EmailScheduleItem {
+  id: string;
+  toEmail: string;
+  subject: string;
+  body: string;
+  scheduledAt: Date;
+  senderId: string;
+  status: EmailStatus;
+}

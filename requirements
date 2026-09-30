@@ -1,0 +1,39 @@
+# ReachInbox Scheduler requirements
+
+# This repo is configured as an npm workspace. Install from the project root:
+
+#
+
+# npm install
+
+#
+
+# That installs the root workspace and all package dependencies for backend and frontend.
+
+#
+
+# Required runtime prerequisites before phase implementation:
+
+# 1. Node.js >= 20.12
+
+# 2. Docker Desktop / Docker Engine running
+
+# 3. MySQL, Redis, and Elasticsearch services available via docker compose
+
+# 4. Backend .env and frontend .env built from the example files
+
+# 5. Google OAuth and Slack OAuth credentials if you want auth integration enabled
+
+# 6. A JWT secret and app-level env values configured
+
+#
+
+# After installation and env setup, run:
+
+# npm run docker:up
+
+# npm run test --workspace @reachinbox/backend
+
+#
+
+# This file is a repo-local checklist for the install and environment setup required before continuing with the phase work.

@@ -6,5 +6,31 @@
   ],
   "name": "@reachinbox/root",
   "private": true,
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=20.12"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @reachinbox/backend",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  },
+  "devDependencies": {
+    "@esbuild/win32-x64": "^0.28.2",
+    "@types/jsonwebtoken": "^9.0.10"
+  },
+  "dependencies": {
+    "bullmq": "^6.3.10",
+    "google-auth-library": "^11.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^10.0.13"
+  }
 }

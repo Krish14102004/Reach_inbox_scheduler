@@ -35,7 +35,7 @@
 
   KEEP IT SHORT AND CURRENT: delete stale items; history belongs in git commits.
 -->
-
+npm install @esbuild/win32-x64 --save-dev
 ## Decisions
 
 - MySQL instead of PostgreSQL.

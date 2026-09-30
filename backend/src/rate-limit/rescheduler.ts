@@ -4,4 +4,8 @@
  * PURPOSE: Moves a rate-limited job to the next hour window (job.moveToDelayed + DelayedError) with rank-based offset to preserve ordering; updates scheduledAt in DB. Never drops or fails jobs.
  */
 
-export {};
+import { getNextHourWindowStart } from '../lib/time.js';
+
+export function getRescheduledTime(date: Date): Date {
+  return getNextHourWindowStart(date);
+}

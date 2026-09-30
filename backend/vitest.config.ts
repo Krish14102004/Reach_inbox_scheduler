@@ -1,7 +1,10 @@
-/**
- * FILE: backend/vitest.config.ts
- * PHASE: 9 - Hardening, Load Test, Docs & Submission
- * PURPOSE: Vitest config for unit + integration tests (node environment, test env vars).
- */
+import { defineConfig } from 'vitest/config';
 
-export {};
+export default defineConfig({
+  test: {
+    environment: 'node',
+    globals: true,
+    include: ['tests/**/*.test.ts'],
+    exclude: ['node_modules', 'dist'],
+  },
+});
